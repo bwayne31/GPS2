@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golf GPS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease;
+        }
+        .icon {
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+        #wake-lock-icon {
+            stroke-width: 2.5;
+        }
+        .distance-card {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .distance-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .hazard-item {
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 min-h-screen">
+    <div class="max-w-sm mx-auto min-h-screen flex flex-col">
+
+        <!-- Main GPS View -->
+        <div id="main-view" class="flex flex-col min-h-screen p-4">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6 pt-2">
+                <button id="scorecard-btn" class="p-3 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:scale-105 transition-all">
+                    <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                </button>
+                
+                <div class="text-center flex-1">
+                    <h1 id="course-name" class="text-xl font-bold text-gray-900 dark:text-white"></h1>
+                    <p id="hole-info" class="text-sm text-gray-600 dark:text-gray-400 font-medium"></p>
+                </div>
+                
+                <button id="wake-lock-btn" class="p-3 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:scale-105 transition-all">
+                    <svg id="wake-lock-icon" class="w-5 h-5 text-gray-700 dark:text-gray-300 icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Distance Cards - Stacked Vertically -->
+            <div class="space-y-3 mb-6">
+                <!-- Front Distance -->
+                <div class="distance-card rounded-2xl p-4 shadow-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Front</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">yards</p>
+                        </div>
+                        <p id="distance-front" class="text-5xl font-black text-red-600 dark:text-red-400">--</p>
+                    </div>
+                </div>
+
+                <!-- Center Distance -->
+                <div class="distance-card rounded-2xl p-4 shadow-lg border-2 border-green-200 dark:border-green-800">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Center</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">yards</p>
+                        </div>
+                        <p id="distance-center" class="text-5xl font-black text-green-600 dark:text-green-400">--</p>
+                    </div>
+                </div>
+
+                <!-- Back Distance -->
+                <div class="distance-card rounded-2xl p-4 shadow-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Back</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">yards</p>
+                        </div>
+                        <p id="distance-back" class="text-5xl font-black text-blue-600 dark:text-blue-400">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hazards Section -->
+            <div id="hazards-container" class="mb-6">
+                <div id="hazards-list" class="space-y-2">
+                    <!-- Hazards will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Shot Distance Display -->
+            <div id="shot-distance-display" class="hidden mb-6">
+                <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-orange-200 dark:border-orange-800">
+                    <div class="text-center">
+                        <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">Last Shot</p>
+                        <p id="shot-distance" class="text-4xl font-black text-orange-600 dark:text-orange-400">--</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">yards</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Area -->
+            <div class="mb-4">
+                <p id="message-area" class="text-center text-sm font-medium text-gray-600 dark:text-gray-400 min-h-[20px]"></p>
+            </div>
+
+            <!-- Controls - Fixed at bottom -->
+            <div class="mt-auto space-y-3">
+                <!-- Navigation -->
+                <div class="flex gap-3">
+                    <button id="prev-hole-btn" class="flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-700 dark:text-gray-300 font-semibold py-4 rounded-2xl shadow-lg hover:scale-[1.02] transition-all">
+                        Previous
+                    </button>
+                    <button id="next-hole-btn" class="flex-1 bg-blue-600 text-white font-semibold py-4 rounded-2xl shadow-lg hover:bg-blue-700 hover:scale-[1.02] transition-all">
+                        Next
+                    </button>
+                </div>
+                
+                <!-- Shot Tracker -->
+                <button id="shot-tracker-btn" class="w-full bg-green-600 text-white font-semibold py-4 rounded-2xl shadow-lg hover:bg-green-700 hover:scale-[1.02] transition-all">
+                    Start Shot
+                </button>
+            </div>
+        </div>
+
+        <!-- Score Entry View -->
+        <div id="score-entry-view" class="hidden flex flex-col min-h-screen p-4">
+            <div class="flex-1">
+                <h1 id="score-entry-title" class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-8 mt-8">Score Hole 1</h1>
+                
+                <div class="grid grid-cols-3 gap-4 mb-8">
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="1">1</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="2">2</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="3">3</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="4">4</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="5">5</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="6">6</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="7">7</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="8">8</button>
+                    <button class="score-btn bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-white font-bold py-8 rounded-2xl text-4xl shadow-lg hover:scale-105 transition-all" data-score="9">9</button>
+                </div>
+            </div>
+            
+            <div>
+                <p id="score-entry-message" class="text-center text-sm font-medium text-gray-600 dark:text-gray-400 mb-4 min-h-[20px]"></p>
+                <button id="cancel-score-btn" class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-700 dark:text-gray-300 font-semibold py-4 rounded-2xl shadow-lg hover:scale-[1.02] transition-all">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Scorecard View -->
+        <div id="scorecard-view" class="hidden flex flex-col min-h-screen p-4">
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-6 mt-8">Scorecard</h1>
+                
+                <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg mb-6">
+                    <div class="grid grid-cols-3 gap-2 font-bold text-sm text-gray-600 dark:text-gray-300 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                        <span>Hole</span>
+                        <span class="text-center">Par</span>
+                        <span class="text-right">Score</span>
+                    </div>
+                    <div id="scores-list" class="space-y-2">
+                        <!-- Score rows will be added here -->
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 shadow-lg text-white mb-6">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xl font-bold">Total Score</span>
+                        <span id="total-score" class="text-4xl font-black">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-3">
+                <button id="back-to-course-btn" class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-700 dark:text-gray-300 font-semibold py-4 rounded-2xl shadow-lg hover:scale-[1.02] transition-all">
+                    Back to Course
+                </button>
+                <button id="start-new-round-btn" class="w-full bg-red-600 text-white font-semibold py-4 rounded-2xl shadow-lg hover:bg-red-700 hover:scale-[1.02] transition-all">
+                    Start New Round
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // Course data for Hadley Creek
+            const courseData = {
+                name: "HadleyCreek",
+                holes: [
+                    { 
+                        hole: 1, 
+                        par: 3, 
+                        tee: [44.075384, -92.431759], 
+                        front: [44.074584, -92.432029], 
+                        center: [44.074452, -92.432007], 
+                        back: [44.074334, -92.431968],
+                        hazards: []
+                    },
+                    { 
+                        hole: 2, 
+                        par: 4, 
+                        tee: [44.073303, -92.431259], 
+                        front: [44.074169, -92.434047], 
+                        center: [44.074227, -92.434211], 
+                        back: [44.074301, -92.434349],
+                        hazards: [
+                            { name: "Right Bunker", location: [44.073809, -92.432729] },
+                            { name: "Left Bunker", location: [44.073771, -92.433538] }
+                        ]
+                    },
+                    { 
+                        hole: 3, 
+                        par: 3, 
+                        tee: [44.073554, -92.434544], 
+                        front: [44.072758, -92.433836], 
+                        center: [44.072678, -92.433714], 
+                        back: [44.072582, -92.433597], 
+                        hazards: [
+                            { name: "Left Bunker", location: [44.07296298584522, -92.43384416400436] }
+                        ]
+                    },
+                    { 
+                        hole: 4, 
+                        par: 3, 
+                        tee: [44.072748, -92.434836], 
+                        front: [44.073577, -92.435656], 
+                        center: [44.073693, -92.435775], 
+                        back: [44.073808, -92.435914],
+                        hazards: []
+                    },
+                    { 
+                        hole: 5, 
+                        par: 4, 
+                        tee: [44.074034, -92.439247], 
+                        front: [44.074087, -92.442439], 
+                        center: [44.074133, -92.442610], 
+                        back: [44.074181, -92.442764], 
+                        hazards: []
+                    },
+                    { 
+                        hole: 6, 
+                        par: 3, 
+                        tee: [44.073704, -92.443746], 
+                        front: [44.073768, -92.444650], 
+                        center: [44.073819, -92.444810], 
+                        back: [44.073841, -92.444974], 
+                        hazards: [
+                            { name: "Water on Right", location: [44.07385845583365, -92.44452525640412] }
+                        ]
+                    },
+                    { 
+                        hole: 7, 
+                        par: 4, 
+                        tee: [44.075151, -92.445116], 
+                        front: [44.074793, -92.441756], 
+                        center: [44.074769, -92.441583], 
+                        back: [44.074780, -92.441421], 
+                        hazards: [
+                            { name: "Left Bunker", location: [44.074621, -92.442656] }, 
+                            { name: "Right Water", location: [44.074800, -92.441900] } 
+                        ]
+                    },
+                    { 
+                        hole: 8, 
+                        par: 3, 
+                        tee: [44.074850, -92.439902], 
+                        front: [44.074910, -92.438149], 
+                        center: [44.074950, -92.437983], 
+                        back: [44.074989, -92.437890], 
+                        hazards: []
+                    },
+                    { 
+                        hole: 9, 
+                        par: 4, 
+                        tee: [44.074869, -92.436735], 
+                        front: [44.075048, -92.433139], 
+                        center: [44.075108, -92.433005], 
+                        back: [44.075154, -92.432855], 
+                        hazards: [
+                            { name: "Left Bunker", location: [44.07517764620998, -92.43392076595802] }
+                        ]
+                    }
+                ]
+            };
+            
+            const clubhouseCoordinates = [44.07573313979243, -92.43190539177425];
+            
+            let currentHoleIndex = 0;
+            const scores = new Array(courseData.holes.length).fill(null);
+            
+            const proximityThresholdHighAccuracy = 50;
+            const proximityThresholdAdvance = 15;
+            const finalProximityThreshold = 50;
+            
+            let watcherId = null;
+            let gpsState = 'low-power';
+            let shotStartLocation = null;
+
+            // Hazard icons
+            const bunkerIcon = `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2"/>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                <path d="M12 10V6c-2.21 0-4 1.79-4 4h4z"/>
+            </svg>`;
+
+            const waterIcon = `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2.1c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM21 9h-6l-.35-3.5c-.15-1.49-1.4-2.5-2.9-2.5s-2.75 1.01-2.9 2.5L8.5 9H3c-.55 0-1 .45-1 1s.45 1 1 1h1.25l1.75 8.8c.15.75.8 1.2 1.55 1.2h9.9c.75 0 1.4-.45 1.55-1.2L20.75 11H21c.55 0 1-.45 1-1s-.45-1-1-1z"/>
+            </svg>`;
+
+            function haversine(lat1, lon1, lat2, lon2) {
+                const R = 6371;
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distance_km = R * c;
+                return distance_km * 1093.61;
+            }
+
+            function updateUI() {
+                const hole = courseData.holes[currentHoleIndex];
+                document.getElementById('course-name').textContent = courseData.name;
+                document.getElementById('hole-info').textContent = `Hole ${hole.hole} | Par ${hole.par}`;
+            }
+
+            function displayDistances(position) {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                const currentHole = courseData.holes[currentHoleIndex];
+                
+                const frontEl = document.getElementById('distance-front');
+                const centerEl = document.getElementById('distance-center');
+                const backEl = document.getElementById('distance-back');
+                const hazardsListEl = document.getElementById('hazards-list');
+                
+                hazardsListEl.innerHTML = '';
+
+                const distFront = haversine(userLat, userLon, currentHole.front[0], currentHole.front[1]);
+                const distCenter = haversine(userLat, userLon, currentHole.center[0], currentHole.center[1]);
+                const distBack = haversine(userLat, userLon, currentHole.back[0], currentHole.back[1]);
+
+                frontEl.textContent = Math.round(distFront);
+                centerEl.textContent = Math.round(distCenter);
+                backEl.textContent = Math.round(distBack);
+                
+                // Show hazards only if they exist for this hole
+                if (currentHole.hazards && currentHole.hazards.length > 0) {
+                    currentHole.hazards.forEach(hazard => {
+                        const hazardDiv = document.createElement('div');
+                        let bgClass = '';
+                        let textClass = '';
+                        let iconHtml = '';
+
+                        const hazardNameLower = hazard.name.toLowerCase();
+                        if (hazardNameLower.includes("bunker")) {
+                            bgClass = 'bg-amber-100/80 dark:bg-amber-900/80';
+                            textClass = 'text-amber-800 dark:text-amber-200';
+                            iconHtml = bunkerIcon;
+                        } else if (hazardNameLower.includes("water")) {
+                            bgClass = 'bg-blue-100/80 dark:bg-blue-900/80';
+                            textClass = 'text-blue-800 dark:text-blue-200';
+                            iconHtml = waterIcon;
+                        } else {
+                            bgClass = 'bg-gray-100/80 dark:bg-gray-800/80';
+                            textClass = 'text-gray-800 dark:text-gray-200';
+                        }
+
+                        hazardDiv.className = `hazard-item flex justify-between items-center py-3 px-4 rounded-xl shadow-md backdrop-blur-sm ${bgClass} ${textClass}`;
+
+                        if (hazard.location) {
+                            const distToHazard = haversine(userLat, userLon, hazard.location[0], hazard.location[1]);
+                            hazardDiv.innerHTML = `
+                                <div class="flex items-center space-x-3">
+                                    ${iconHtml}
+                                    <span class="font-semibold">${hazard.name}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-2xl font-bold">${Math.round(distToHazard)}</span>
+                                    <span class="text-xs opacity-75 ml-1">yds</span>
+                                </div>
+                            `;
+                        }
+                        
+                        hazardsListEl.appendChild(hazardDiv);
+                    });
+                }
+            }
+            
+            function startHighAccuracyWatcher() {
+                if (watcherId !== null) {
+                    navigator.geolocation.clearWatch(watcherId);
+                }
+                watcherId = navigator.geolocation.watchPosition(
+                    checkAndAdvance,
+                    (error) => {
+                        document.getElementById('message-area').textContent = 'GPS Error: ' + error.message;
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+                gpsState = 'high-accuracy';
+                document.getElementById('message-area').textContent = 'High-accuracy GPS active';
+            }
+
+            function startLowPowerWatcher() {
+                if (watcherId !== null) {
+                    navigator.geolocation.clearWatch(watcherId);
+                }
+                watcherId = navigator.geolocation.watchPosition(
+                    checkAndAdvance,
+                    (error) => {
+                        document.getElementById('message-area').textContent = 'GPS Error: ' + error.message;
+                    },
+                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+                );
+                gpsState = 'low-power';
+                document.getElementById('message-area').textContent = 'GPS active';
+            }
+
+            function checkAndAdvance(position) {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                const currentHole = courseData.holes[currentHoleIndex];
+                
+                const distToGreen = haversine(userLat, userLon, currentHole.center[0], currentHole.center[1]);
+                
+                if (currentHoleIndex < courseData.holes.length - 1) {
+                    const nextHole = courseData.holes[currentHoleIndex + 1];
+                    const distToNextTee = haversine(userLat, userLon, nextHole.tee[0], nextHole.tee[1]);
+                    
+                    if (distToNextTee <= proximityThresholdAdvance && scores[currentHoleIndex] === null) {
+                        showScoreEntry(currentHole.hole);
+                        document.getElementById('message-area').textContent = `At next tee - enter score for hole ${currentHole.hole}`;
+                        startLowPowerWatcher();
+                        return;
+                    }
+                } else {
+                    const distToClubhouse = haversine(userLat, userLon, clubhouseCoordinates[0], clubhouseCoordinates[1]);
+                    if (distToClubhouse <= finalProximityThreshold && scores[currentHoleIndex] === null) {
+                        showScoreEntry(currentHole.hole);
+                        document.getElementById('message-area').textContent = `Round complete - enter final score`;
+                        startLowPowerWatcher();
+                        return;
+                    }
+                }
+
+                if (distToGreen <= proximityThresholdHighAccuracy && gpsState === 'low-power') {
+                    startHighAccuracyWatcher();
+                } else if (distToGreen > proximityThresholdHighAccuracy && gpsState === 'high-accuracy') {
+                    startLowPowerWatcher();
+                }
+                
+                displayDistances(position);
+            }
+
+            function showScoreEntry(holeNumber) {
+                document.getElementById('main-view').classList.add('hidden');
+                document.getElementById('scorecard-view').classList.add('hidden');
+                document.getElementById('score-entry-view').classList.remove('hidden');
+                document.getElementById('score-entry-title').textContent = `Score Hole ${holeNumber}`;
+            }
+
+            function showMainView() {
+                document.getElementById('main-view').classList.remove('hidden');
+                document.getElementById('scorecard-view').classList.add('hidden');
+                document.getElementById('score-entry-view').classList.add('hidden');
+            }
+
+            function saveScoreAndAdvance(score) {
+                scores[currentHoleIndex] = parseInt(score);
+                document.getElementById('score-entry-message').textContent = `Score ${score} saved`;
+                
+                if (currentHoleIndex < courseData.holes.length - 1) {
+                    currentHoleIndex++;
+                    updateUI();
+                    showMainView();
+                    navigator.geolocation.getCurrentPosition(displayDistances);
+                } else {
+                    showScorecard();
+                }
+            }
+            
+            function showScorecard() {
+                document.getElementById('main-view').classList.add('hidden');
+                document.getElementById('score-entry-view').classList.add('hidden');
+                document.getElementById('scorecard-view').classList.remove('hidden');
+
+                const scoresListEl = document.getElementById('scores-list');
+                scoresListEl.innerHTML = '';
+                let totalScore = 0;
+
+                for (let i = 0; i < scores.length; i++) {
+                    const hole = courseData.holes[i];
+                    const score = scores[i] !== null ? scores[i] : '-';
+                    if (score !== '-') {
+                        totalScore += parseInt(score);
+                    }
+
+                    const scoreRow = document.createElement('div');
+                    scoreRow.className = `score-row grid grid-cols-3 gap-2 text-sm font-medium p-3 rounded-xl hover:bg-white/60 dark:hover:bg-gray-700/60 cursor-pointer transition-all backdrop-blur-sm`;
+                    scoreRow.dataset.holeIndex = i;
+                    
+                    // Color coding for scores relative to par
+                    let scoreColor = 'text-gray-800 dark:text-gray-200';
+                    if (score !== '-') {
+                        const scoreDiff = score - hole.par;
+                        if (scoreDiff < 0) scoreColor = 'text-green-600 dark:text-green-400'; // Under par
+                        else if (scoreDiff > 0) scoreColor = 'text-red-600 dark:text-red-400'; // Over par
+                        else scoreColor = 'text-blue-600 dark:text-blue-400'; // Par
+                    }
+                    
+                    scoreRow.innerHTML = `
+                        <span class="text-gray-700 dark:text-gray-300">Hole ${hole.hole}</span>
+                        <span class="text-center text-gray-600 dark:text-gray-400">${hole.par}</span>
+                        <span class="text-right font-bold ${scoreColor}">${score}</span>
+                    `;
+                    scoresListEl.appendChild(scoreRow);
+                }
+
+                document.getElementById('total-score').textContent = totalScore;
+            }
+
+            function startNewRound() {
+                currentHoleIndex = 0;
+                scores.fill(null);
+                showMainView();
+                updateUI();
+                navigator.geolocation.getCurrentPosition(displayDistances);
+            }
+
+            function updateShotTrackerButton(state) {
+                const shotTrackerBtn = document.getElementById('shot-tracker-btn');
+                shotTrackerBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-red-600', 'hover:bg-red-700', 'bg-green-600', 'hover:bg-green-700');
+                
+                if (state === 'tracking') {
+                    shotTrackerBtn.textContent = 'End Shot';
+                    shotTrackerBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                } else {
+                    shotTrackerBtn.textContent = 'Start Shot';
+                    shotTrackerBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                }
+            }
+
+            // Event Listeners
+            document.getElementById('scorecard-btn').addEventListener('click', showScorecard);
+
+            document.getElementById('next-hole-btn').addEventListener('click', () => {
+                if (currentHoleIndex < courseData.holes.length - 1 && scores[currentHoleIndex] !== null) {
+                    currentHoleIndex++;
+                    updateUI();
+                    navigator.geolocation.getCurrentPosition(displayDistances);
+                } else if (scores[currentHoleIndex] === null) {
+                    showScoreEntry(courseData.holes[currentHoleIndex].hole);
+                } else {
+                    showScorecard();
+                }
+            });
+
+            document.getElementById('prev-hole-btn').addEventListener('click', () => {
+                if (currentHoleIndex > 0) {
+                    currentHoleIndex--;
+                    updateUI();
+                    navigator.geolocation.getCurrentPosition(displayDistances);
+                }
+            });
+
+            document.querySelectorAll('.score-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const score = event.target.getAttribute('data-score');
+                    saveScoreAndAdvance(score);
+                });
+            });
+
+            document.getElementById('cancel-score-btn').addEventListener('click', showMainView);
+            document.getElementById('back-to-course-btn').addEventListener('click', showMainView);
+            document.getElementById('start-new-round-btn').addEventListener('click', startNewRound);
+            
+            document.getElementById('scores-list').addEventListener('click', (event) => {
+                let target = event.target;
+                while (target && !target.classList.contains('score-row')) {
+                    target = target.parentElement;
+                }
+                
+                if (target) {
+                    const holeIndex = parseInt(target.dataset.holeIndex);
+                    if (!isNaN(holeIndex)) {
+                        currentHoleIndex = holeIndex;
+                        showScoreEntry(courseData.holes[holeIndex].hole);
+                    }
+                }
+            });
+
+            // Shot Tracker
+            const shotTrackerBtn = document.getElementById('shot-tracker-btn');
+            const shotDistanceDisplay = document.getElementById('shot-distance-display');
+            const shotDistanceEl = document.getElementById('shot-distance');
+            
+            updateShotTrackerButton('idle');
+            
+            shotTrackerBtn.addEventListener('click', () => {
+                if (!shotStartLocation) {
+                    navigator.geolocation.getCurrentPosition((position) => {
+                        shotStartLocation = [position.coords.latitude, position.coords.longitude];
+                        updateShotTrackerButton('tracking');
+                        document.getElementById('message-area').textContent = 'Shot tracking - tap again at your ball';
+                        shotDistanceDisplay.classList.add('hidden');
+                    }, (error) => {
+                        document.getElementById('message-area').textContent = 'Shot start error: ' + error.message;
+                    });
+                } else {
+                    navigator.geolocation.getCurrentPosition((position) => {
+                        const endLat = position.coords.latitude;
+                        const endLon = position.coords.longitude;
+
+                        const distance = haversine(shotStartLocation[0], shotStartLocation[1], endLat, endLon);
+                        
+                        shotDistanceEl.textContent = Math.round(distance);
+                        shotDistanceDisplay.classList.remove('hidden');
+
+                        shotStartLocation = null;
+                        updateShotTrackerButton('idle');
+                        document.getElementById('message-area').textContent = `Shot: ${Math.round(distance)} yards`;
+                    }, (error) => {
+                        document.getElementById('message-area').textContent = 'Shot end error: ' + error.message;
+                    });
+                }
+            });
+
+            // Wake Lock
+            const wakeLockBtn = document.getElementById('wake-lock-btn');
+            let wakeLockSentinel = null;
+
+            async function requestWakeLock() {
+                if ('wakeLock' in navigator) {
+                    try {
+                        wakeLockSentinel = await navigator.wakeLock.request('screen');
+                        wakeLockBtn.style.backgroundColor = '#10B981';
+                        wakeLockBtn.style.color = '#FFFFFF';
+                    } catch (err) {
+                        console.error(`Wake lock error: ${err.name}, ${err.message}`);
+                    }
+                }
+            }
+
+            function releaseWakeLock() {
+                if (wakeLockSentinel) {
+                    wakeLockSentinel.release().then(() => {
+                        wakeLockSentinel = null;
+                        wakeLockBtn.style.backgroundColor = '';
+                        wakeLockBtn.style.color = '';
+                    });
+                }
+            }
+
+            wakeLockBtn.addEventListener('click', () => {
+                if (wakeLockSentinel) {
+                    releaseWakeLock();
+                } else {
+                    requestWakeLock();
+                }
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (wakeLockSentinel !== null && document.visibilityState === 'visible') {
+                    requestWakeLock();
+                }
+            });
+
+            // Initialize
+            updateUI();
+            startLowPowerWatcher();
+        })();
+    </script>
+</body>
+</html>
